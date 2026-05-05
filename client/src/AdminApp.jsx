@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL || (window.location.origin.includes('localhost') ? "http://localhost:3000" : window.location.origin);
 const SKILL_CATEGORIES = [
   "Gardening", "Plumbing", "Electrical", "Carpentry", "Cleaning", "Cooking",
   "Childcare", "Elderly Care", "Tech Support", "Transport / Errand",

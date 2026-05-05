@@ -5,7 +5,7 @@ import debounce from "debounce";
 import io from "socket.io-client";
 import { createClient } from "@supabase/supabase-js";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL || (window.location.origin.includes('localhost') ? "http://localhost:3000" : window.location.origin);
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
