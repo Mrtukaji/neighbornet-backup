@@ -116,7 +116,7 @@ function emitNewComment(taskId, comment) {
 }
 
 // Routes
-app.get("/", (req, res) => res.send("NeighborNet API is running"));
+// Removed plain text root route to allow static files to serve
 app.use("/auth", authRoutes);
 app.use("/disputes", disputeRoutes);
 
