@@ -32,7 +32,10 @@ function fixIds(data) {
 }
 
 // Middleware
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({ 
+  contentSecurityPolicy: false,
+  referrerPolicy: false // Allow Referer header needed by OpenStreetMap tiles
+}));
 app.use(cors({ origin: process.env.CORS_ORIGIN || true, credentials: true }));
 app.use(express.json());
 
