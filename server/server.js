@@ -1159,8 +1159,13 @@ const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientBuildPath));
 
 // Catch-all: send index.html for any non-API route (supports /admin, /auth, etc.)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
+app.use((req, res, next) => {
+  // Only serve index.html for GET requests that don't start with /api (though API routes are earlier)
+  if (req.method === 'GET') {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  } else {
+    next();
+  }
 });
 
 // Start server
