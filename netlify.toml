@@ -1,0 +1,17 @@
+[build]
+  # Tell Netlify that the frontend code is inside the "client" folder
+  base = "client"
+  
+  # The command to build the Vite React app
+  command = "npm run build"
+  
+  # The folder where Vite puts the built files (relative to "client")
+  publish = "dist"
+
+# This is CRITICAL for React/Vite Router to work.
+# It tells Netlify to redirect all routes (like /admin or /auth) back to index.html
+# instead of looking for an exact file like admin.html and showing a 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
