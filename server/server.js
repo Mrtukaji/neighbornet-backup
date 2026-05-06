@@ -26,6 +26,10 @@ function fixIds(data) {
   if (typeof data === 'object' && data !== null) {
     const newObj = { ...data, _id: data.id };
     delete newObj.id;
+    if (newObj.created_by !== undefined) { newObj.createdBy = newObj.created_by; delete newObj.created_by; }
+    if (newObj.accepted_by !== undefined) { newObj.acceptedBy = newObj.accepted_by; delete newObj.accepted_by; }
+    if (newObj.created_by_user_id !== undefined) { newObj.createdByUserId = newObj.created_by_user_id; delete newObj.created_by_user_id; }
+    if (newObj.accepted_by_user_id !== undefined) { newObj.acceptedByUserId = newObj.accepted_by_user_id; delete newObj.accepted_by_user_id; }
     return newObj;
   }
   return data;
