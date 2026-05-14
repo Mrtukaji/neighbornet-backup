@@ -736,14 +736,18 @@ export default function App() {
 
   // Image upload helper
   async function uploadEvidenceImage(file, taskId) {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${taskId}/${Date.now()}.${fileExt}`;
-    const { data, error } = await supabase.storage
-      .from('task-evidence')
-      .upload(fileName, file, { cacheControl: '3600', upsert: false });
-    if (error) throw error;
-    const { data: { publicUrl } } = supabase.storage.from('task-evidence').getPublicUrl(fileName);
-    return publicUrl;
+    const formData = new FormData();
+    formData.append('evidence', file);
+    
+    const res = await fetch(`${API_URL}/tasks/${taskId}/upload`, {
+      method: "POST",
+      headers: { ...authHeaders },
+      body: formData
+    });
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to upload image.");
+    return data.publicUrl;
   }
 
   async function completeTaskWithEvidence(taskId, evidenceFiles) {

@@ -8,9 +8,12 @@ const helmet = require("helmet");
 const http = require("http");
 const socketIo = require("socket.io");
 const { supabase } = require("./db");
+const multer = require("multer");
 
 const authRoutes = require("./routes/auth");
 const disputeRoutes = require("./routes/disputes");
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const app = express();
 const server = http.createServer(app);
@@ -383,6 +386,36 @@ app.put("/tasks/:id/accept", requireAuth, async (req, res) => {
     res.json(fixIds(updatedTask));
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// PUT upload task evidence
+app.post("/tasks/:id/upload", requireAuth, upload.single("evidence"), async (req, res) => {
+  try {
+    const taskId = req.params.id;
+    const file = req.file;
+    if (!file) return res.status(400).json({ message: "No file uploaded" });
+
+    const fileExt = file.originalname.split('.').pop();
+    const fileName = `${taskId}/${Date.now()}.${fileExt}`;
+
+    const { data, error } = await supabase.storage
+      .from('task-evidence')
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false
+      });
+      
+    if (error) {
+       console.error("Storage Error:", error.message);
+       return res.status(400).json({ message: "Upload blocked by Storage: " + error.message });
+    }
+    
+    const { data: { publicUrl } } = supabase.storage.from('task-evidence').getPublicUrl(fileName);
+    res.json({ publicUrl });
+  } catch (err) {
+    console.error("Endpoint Error:", err.message);
+    res.status(500).json({ message: err.message });
   }
 });
 
