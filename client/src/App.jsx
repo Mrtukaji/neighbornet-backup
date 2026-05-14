@@ -781,7 +781,7 @@ export default function App() {
       const res = await fetch(url, {
         method,
         headers: jsonHeaders,
-        body: JSON.stringify({ title, category, description, points: Number(points), difficulty, urgency, deadline: deadline || null, location, lat: pickedPosition.lat, lng: pickedPosition.lng }),
+        body: JSON.stringify({ title: category, category, description, points: Number(points), difficulty, urgency, deadline: deadline || null, location, lat: pickedPosition.lat, lng: pickedPosition.lng }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
