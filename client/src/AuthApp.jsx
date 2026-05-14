@@ -24,6 +24,11 @@ export default function AuthApp() {
   });
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
 
+  const [customSkill, setCustomSkill] = useState("");
+  const [customInterest, setCustomInterest] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
   const toggleSkill = (skill) => {
     setSignupForm(prev => ({
       ...prev,
@@ -42,6 +47,20 @@ export default function AuthApp() {
     e.preventDefault();
     setError("");
     setSuccess("");
+    
+    if (signupForm.password.length < 8) {
+      return setError("Password must be at least 8 characters long.");
+    }
+    if (signupForm.password !== confirmPassword) {
+      return setError("Passwords do not match.");
+    }
+    if (!termsAccepted) {
+      return setError("You must accept the terms of service.");
+    }
+    if (signupForm.skills.length === 0 && signupForm.interests.length === 0) {
+      return setError("Please select at least one skill or interest.");
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/auth/signup`, {
@@ -118,22 +137,50 @@ export default function AuthApp() {
             <input type="text" placeholder="Your name" value={signupForm.name} onChange={(e) => setSignupForm({ ...signupForm, name: e.target.value })} style={inputStyle} required />
             <FieldLabel>Email Address</FieldLabel>
             <input type="email" placeholder="you@example.com" value={signupForm.email} onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })} style={inputStyle} required />
-            <FieldLabel>Password (min. 6 characters)</FieldLabel>
-            <input type="password" placeholder="••••••••" value={signupForm.password} onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })} style={inputStyle} required minLength={6} />
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <FieldLabel>Password</FieldLabel>
+                <input type="password" placeholder="Min. 8 characters" value={signupForm.password} onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })} style={inputStyle} required minLength={8} />
+              </div>
+              <div>
+                <FieldLabel>Confirm Password</FieldLabel>
+                <input type="password" placeholder="Repeat password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={inputStyle} required />
+              </div>
+            </div>
 
-            <FieldLabel>Helper Skills</FieldLabel>
+            <FieldLabel>Helper Skills (Select or add custom)</FieldLabel>
             <div style={skillGridStyle}>
               {SKILL_CATEGORIES.map(skill => (
                 <button key={skill} type="button" onClick={() => toggleSkill(skill)} style={skillChipStyle(signupForm.skills.includes(skill))}>{skill}</button>
               ))}
+              {signupForm.skills.filter(s => !SKILL_CATEGORIES.includes(s)).map(skill => (
+                <button key={skill} type="button" onClick={() => toggleSkill(skill)} style={skillChipStyle(true)}>{skill} ×</button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              <input type="text" placeholder="Other skill..." style={{ ...inputStyle, padding: "6px 10px", flex: 1, fontSize: 12 }} value={customSkill} onChange={e => setCustomSkill(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if(customSkill) { toggleSkill(customSkill); setCustomSkill(""); } } }} />
+              <button type="button" onClick={() => { if(customSkill.trim()) { toggleSkill(customSkill.trim()); setCustomSkill(""); } }} style={{ ...secBtnStyle, padding: "6px 12px" }}>Add</button>
             </div>
 
-            <FieldLabel>Interests (topics you care about)</FieldLabel>
+            <FieldLabel>Interests (Topics you care about)</FieldLabel>
             <div style={skillGridStyle}>
               {INTEREST_CATEGORIES.map(interest => (
                 <button key={interest} type="button" onClick={() => toggleInterest(interest)} style={skillChipStyle(signupForm.interests.includes(interest))}>{interest}</button>
               ))}
+              {signupForm.interests.filter(i => !INTEREST_CATEGORIES.includes(i)).map(interest => (
+                <button key={interest} type="button" onClick={() => toggleInterest(interest)} style={skillChipStyle(true)}>{interest} ×</button>
+              ))}
             </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              <input type="text" placeholder="Other interest..." style={{ ...inputStyle, padding: "6px 10px", flex: 1, fontSize: 12 }} value={customInterest} onChange={e => setCustomInterest(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if(customInterest) { toggleInterest(customInterest); setCustomInterest(""); } } }} />
+              <button type="button" onClick={() => { if(customInterest.trim()) { toggleInterest(customInterest.trim()); setCustomInterest(""); } }} style={{ ...secBtnStyle, padding: "6px 12px" }}>Add</button>
+            </div>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, cursor: "pointer" }}>
+              <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} required />
+              <span style={{ fontSize: 11, color: "#475569" }}>I verify my details are correct and accept the Terms of Service.</span>
+            </label>
 
             <button type="submit" disabled={loading} style={primaryBtnStyle}>{loading ? "Creating Account..." : "Create Account →"}</button>
           </form>

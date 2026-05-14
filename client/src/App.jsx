@@ -307,6 +307,7 @@ function FilterSelect({ label, value, options, labels, onChange }) {
 // ─── Dispute Modal ───────────────────────────────────────────────────────────
 
 function DisputeModal({ task, onClose, onSubmit }) {
+  const [activeTab, setActiveTab] = useState("map"); // map, list, my_tasks
   const [reason, setReason] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -530,7 +531,6 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
 
   // Task form
-  const [title, setTitle] = useState("");
   const [category, setCategory] = useState(SKILL_CATEGORIES[0]);
   const [description, setDescription] = useState("");
   const [points, setPoints] = useState(10);
@@ -557,6 +557,8 @@ export default function App() {
   const [draftSkills, setDraftSkills] = useState([]);
   const [editingInterests, setEditingInterests] = useState(false);
   const [draftInterests, setDraftInterests] = useState([]);
+  const [customSkillProfile, setCustomSkillProfile] = useState("");
+  const [customInterestProfile, setCustomInterestProfile] = useState("");
 
   // Comments
   const [comments, setComments] = useState([]);
@@ -574,9 +576,24 @@ export default function App() {
   // Derived lists
   const activeTasks = useMemo(() => tasks.filter((t) => !t.archived && t.status !== "pending"), [tasks]);
   const visibleActiveTasks = useMemo(() => {
-    if (!mapBounds) return activeTasks;
-    return activeTasks.filter((t) => typeof t.lat === "number" && mapBounds.contains([t.lat, t.lng]));
-  }, [activeTasks, mapBounds]);
+    let filtered = activeTasks;
+    if (mapBounds) {
+      filtered = activeTasks.filter((t) => typeof t.lat === "number" && mapBounds.contains([t.lat, t.lng]));
+    }
+    if (user?.skills || user?.interests) {
+      const uSkills = user.skills || [];
+      const uInt = user.interests || [];
+      return [...filtered].sort((a, b) => {
+        const aMatch = uSkills.includes(a.category) || uInt.includes(a.category) ? 1 : 0;
+        const bMatch = uSkills.includes(b.category) || uInt.includes(b.category) ? 1 : 0;
+        if (bMatch !== aMatch) return bMatch - aMatch;
+        // Secondary sort: Urgency
+        const urgencyScore = { Critical: 3, Hard: 2, Medium: 1, Easy: 0 };
+        return (urgencyScore[b.urgency] || 0) - (urgencyScore[a.urgency] || 0);
+      });
+    }
+    return filtered;
+  }, [activeTasks, mapBounds, user]);
 
   const myPosts = useMemo(() => !user ? [] : tasks.filter((t) => t.createdBy === user.name), [tasks, user]);
   const tasksIHelped = useMemo(() => !user ? [] : tasks.filter((t) => t.acceptedBy === user.name), [tasks, user]);
@@ -756,8 +773,7 @@ export default function App() {
   async function createOrUpdateTask(e) {
     e.preventDefault();
     setError("");
-    if (!title.trim()) return setError("Title is required.");
-    if (!location.trim()) return setError("Location is required.");
+    if (!category) return setError("Category is required.");
     if (!pickedPosition) return setError("Click the map to set a location.");
     try {
       const url = editingTask ? `${API_URL}/tasks/${editingTask._id}` : `${API_URL}/tasks`;
@@ -1078,16 +1094,16 @@ export default function App() {
                     {editingTask ? "Edit your pending task. Changes will be reviewed." : "Your task will be reviewed by a dispatcher before going live."}
                   </div>
                   <form onSubmit={createOrUpdateTask} style={{ display: "grid", gap: 2, marginTop: 6 }}>
-                    <FieldLabel>Task Title *</FieldLabel>
-                    <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Describe the task..." style={inputStyle} />
+                    <FieldLabel>Category *</FieldLabel>
+                    <select value={category} onChange={(e) => setCategory(e.target.value)} style={{...inputStyle, fontWeight: 700}}>
+                      <option value="" disabled>Select category...</option>
+                      {SKILL_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                      {INTEREST_CATEGORIES.filter(i => !SKILL_CATEGORIES.includes(i)).map(c => <option key={c}>{c}</option>)}
+                    </select>
                     <FieldLabel>Description (optional)</FieldLabel>
                     <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="More details..." rows={2} style={{ ...inputStyle, resize: "vertical" }} />
                     <FieldLabel>Location / Barangay *</FieldLabel>
                     <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Brgy. name or area" style={inputStyle} />
-                    <FieldLabel>Category</FieldLabel>
-                    <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
-                      {SKILL_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                    </select>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       <div>
                         <FieldLabel>Difficulty</FieldLabel>
@@ -1235,18 +1251,15 @@ export default function App() {
                                 ))}
                               </div>
                             )}
+                            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "8px 12px", borderRadius: 6, fontSize: 13, color: "#15803d", marginTop: 8, marginBottom: 8 }}>
+                              💡 <strong>Helper Quick Guide:</strong> Please ensure the task is completely fulfilled. Take a clear photo of the completed work and upload it below. The task poster will review this evidence before releasing your reward points.
+                            </div>
                             <button
                               onClick={() => completeTaskWithEvidence(selectedTask._id, selectedImages)}
-                              disabled={uploadingEvidence}
-                              style={{ ...primaryBtnStyle, marginTop: 8, background: "#16a34a" }}
+                              disabled={uploadingEvidence || selectedImages.length === 0}
+                              style={{ ...primaryBtnStyle, marginTop: 8, background: selectedImages.length === 0 ? "#cbd5e1" : "#16a34a", cursor: selectedImages.length === 0 ? "not-allowed" : "pointer" }}
                             >
-                              {uploadingEvidence ? "Uploading..." : "✓ Submit with Evidence"}
-                            </button>
-                            <button
-                              onClick={() => completeTask(selectedTask._id)}
-                              style={{ ...secBtnStyle, marginTop: 8 }}
-                            >
-                              Submit without Evidence
+                              {uploadingEvidence ? "Uploading..." : selectedImages.length === 0 ? "Select a photo first" : "✓ Submit with Evidence"}
                             </button>
                           </div>
                         )}
@@ -1263,7 +1276,7 @@ export default function App() {
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {selectedTask.createdBy === user?.name && selectedTask.status === "pending" && (
                         <>
-                          <button onClick={() => { setEditingTask(selectedTask); setTitle(selectedTask.title); setDescription(selectedTask.description || ""); setCategory(selectedTask.category); setPoints(selectedTask.points); setDifficulty(selectedTask.difficulty); setUrgency(selectedTask.urgency); setDeadline(selectedTask.deadline?.split("T")[0] || ""); setLocation(selectedTask.location); setPickedPosition({ lat: selectedTask.lat, lng: selectedTask.lng }); setShowPostPanel(true); setSelectedTask(null); }} style={secBtnStyle}>✎ Edit</button>
+                          <button onClick={() => { setEditingTask(selectedTask); setDescription(selectedTask.description || ""); setCategory(selectedTask.category); setPoints(selectedTask.points); setDifficulty(selectedTask.difficulty); setUrgency(selectedTask.urgency); setDeadline(selectedTask.deadline?.split("T")[0] || ""); setLocation(selectedTask.location); setPickedPosition({ lat: selectedTask.lat, lng: selectedTask.lng }); setShowPostPanel(true); setSelectedTask(null); }} style={secBtnStyle}>✎ Edit</button>
                           <button onClick={() => deleteTask(selectedTask._id)} style={rejectBtnStyle}>🗑 Delete</button>
                         </>
                       )}
@@ -1378,6 +1391,13 @@ export default function App() {
                         {s}
                       </button>
                     ))}
+                    {draftSkills.filter(s => !SKILL_CATEGORIES.includes(s)).map(skill => (
+                      <button key={skill} type="button" onClick={() => setDraftSkills(p => p.filter(x => x !== skill))} style={{ padding: "4px 9px", borderRadius: 5, border: "1px solid #bfdbfe", background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>{skill} ×</button>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                    <input type="text" placeholder="Other skill..." style={{ ...inputStyle, padding: "6px 10px", flex: 1, fontSize: 12, margin: 0 }} value={customSkillProfile} onChange={e => setCustomSkillProfile(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if(customSkillProfile.trim()) { setDraftSkills(p => p.includes(customSkillProfile.trim()) ? p : [...p, customSkillProfile.trim()]); setCustomSkillProfile(""); } } }} />
+                    <button type="button" onClick={() => { if(customSkillProfile.trim()) { setDraftSkills(p => p.includes(customSkillProfile.trim()) ? p : [...p, customSkillProfile.trim()]); setCustomSkillProfile(""); } }} style={{ ...secBtnStyle, padding: "6px 12px" }}>Add</button>
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button onClick={saveSkills} style={{ ...primaryBtnStyle, flex: 1, padding: 8, fontSize: 12, marginTop: 0 }}>Save</button>
@@ -1414,6 +1434,13 @@ export default function App() {
                         {i}
                       </button>
                     ))}
+                    {draftInterests.filter(i => !INTEREST_CATEGORIES.includes(i)).map(interest => (
+                      <button key={interest} type="button" onClick={() => setDraftInterests(p => p.filter(x => x !== interest))} style={{ padding: "4px 9px", borderRadius: 5, border: "1px solid #fde047", background: "#fefce8", color: "#92400e", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>{interest} ×</button>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                    <input type="text" placeholder="Other interest..." style={{ ...inputStyle, padding: "6px 10px", flex: 1, fontSize: 12, margin: 0 }} value={customInterestProfile} onChange={e => setCustomInterestProfile(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if(customInterestProfile.trim()) { setDraftInterests(p => p.includes(customInterestProfile.trim()) ? p : [...p, customInterestProfile.trim()]); setCustomInterestProfile(""); } } }} />
+                    <button type="button" onClick={() => { if(customInterestProfile.trim()) { setDraftInterests(p => p.includes(customInterestProfile.trim()) ? p : [...p, customInterestProfile.trim()]); setCustomInterestProfile(""); } }} style={{ ...secBtnStyle, padding: "6px 12px" }}>Add</button>
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button onClick={saveInterests} style={{ ...primaryBtnStyle, flex: 1, padding: 8, fontSize: 12, marginTop: 0 }}>Save</button>
@@ -1423,7 +1450,21 @@ export default function App() {
               )}
             </div>
 
-            <div style={{ fontFamily: "monospace", fontSize: 9, color: "#cbd5e1", textAlign: "center" }}>
+            <div style={sidebarPanelStyle}>
+              <SectionLabel>Reward System</SectionLabel>
+              <div style={{ fontSize: 11, color: "#475569", lineHeight: 1.5 }}>
+                <strong style={{color:"#ea580c"}}>Earn Points</strong> by successfully completing tasks with evidence. Points determine your rank.
+                <ul style={{ paddingLeft: 16, margin: "6px 0", color: "#64748b" }}>
+                  <li>Critical Task: <strong>3x pts</strong></li>
+                  <li>Hard Task: <strong>2x pts</strong></li>
+                  <li>Medium: <strong>1.5x pts</strong></li>
+                  <li>Easy: <strong>Base pts</strong></li>
+                </ul>
+                Your <strong>Reputation Rating</strong> increases when posters leave positive ★ reviews on completed ops.
+              </div>
+            </div>
+
+            <div style={{ fontFamily: "monospace", fontSize: 9, color: "#cbd5e1", textAlign: "center", marginTop: 10 }}>
               14.8294° N · 120.2822° E
             </div>
           </aside>
